@@ -10,7 +10,7 @@ let peerMediaConnection;
 const socket = io();
 const peer = new Peer(undefined, {
   host: location.hostname,
-  secure: false,
+  secure: true,
   port: location.port,
   path: 'peerjs'
 })
