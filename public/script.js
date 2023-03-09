@@ -1,3 +1,4 @@
+'use strict';
 const roomId = location.pathname.substring(1);
 const localStream = new MediaStream();
 const remoteStream = new MediaStream();
@@ -74,6 +75,47 @@ function getLocalTracks(constraint) {
 function showStream(type) {
   console.log('showStram => ', type)
   const videoElement = type === 'local' ? document.getElementById('local-video') : document.getElementById('remote-video');
-  videoElement.srcObj = type === 'local' ? localStream : remoteStream
+  videoElement.srcObject = type === 'local' ? localStream : remoteStream
   videoElement.onloadedmetadata = () => { videoElement.play() }
 }
+
+function stopTrack({ stream, kind = "both" }) {
+  const tracks = kind === 'both' ? stream.getTracks() : stream.getTracks().filter(track => track.kind === kind);
+  tracks.forEach(track => {
+    track.enabled = false
+    setTimeout(() => {
+      track.stop()
+      stream.removeTrack(track)
+    }, 1000)
+  });
+}
+
+function replaceTrackBeingSended({ track, kind }) {
+  if (!peerMediaConnection) return;
+  const rtpSenders = peerMediaConnection.getSenders();
+  const filterRtpSenders = rtpSenders.filter(rtpSenders => rtpSenders.track.kind === kind);
+  if (filterRtpSenders.length === 0) return
+  const rtpSender = filterRtpSenders[0]
+  rtpSender.replaceTrack(track)
+}
+
+async function buttonHandler(e) {
+  const element = e.target
+  const kind = element.dataset.kind
+  if (element.dataset.state === 'active') {
+    stopTrack({ stream: localStream, kind })
+    element.dataset.state = 'stop'
+  } else {
+    try {
+      const [track] = await getLocalTracks({ [kind]: true })
+      localStream.addTrack(track)
+      replaceTrackBeingSended({ track, kind })
+    } catch (error) {
+      alert('replace stream error')
+    } finally {
+      element.dataset.state = 'active'
+    }
+  }
+}
+btnCamera.onclick = buttonHandler
+btnMic.onclick = buttonHandler
